@@ -1,11 +1,25 @@
 import os
 from PIL import Image, PngImagePlugin
 
-def get_user_input(prompt):
+def get_user_input(prompt, default=None):
     user_input = input(prompt).strip().lower()
-    if user_input not in ['y', 'yes', 'n', 'no']:
-        return 'no'
+    
+    if not user_input and default is not None:
+        return default
     return user_input
+
+def map_crop_position(input_str):
+    position_map = {
+        't': 'top',
+        'b': 'bottom',
+        'l': 'left',
+        'r': 'right',
+        'top': 'top',
+        'bottom': 'bottom',
+        'left': 'left',
+        'right': 'right'
+    }
+    return position_map.get(input_str, input_str)  # Return the full word if matched, else return the input
 
 def display_help():
     help_message = """
@@ -47,7 +61,7 @@ def save_image(img, path, format, exif_bytes=None):
     else:
         img.save(path, format=format)
 
-def process_images(directory, crop_percent, crop_position, keep_metadata, save_format, compress, resize, resize_percent, add_metadata):
+def process_images(directory, crop, crop_percent, crop_position, keep_metadata, save_format, compress, compress_quality, resize, resize_percent, add_metadata):
     formats = ('.png', '.jpg', '.jpeg', '.webp')
     total_files = 0
     total_space_saved = 0
@@ -60,7 +74,9 @@ def process_images(directory, crop_percent, crop_position, keep_metadata, save_f
             original_size = os.path.getsize(filepath)
             original_format = img.format.lower()
 
-            img = crop_image(img, crop_percent, crop_position)
+            if crop:
+                img = crop_image(img, crop_percent, crop_position)
+            
             exif_bytes = handle_metadata(img, filepath, keep_metadata, original_format)
             
             # Adjust format for saving
@@ -78,7 +94,7 @@ def process_images(directory, crop_percent, crop_position, keep_metadata, save_f
             if compress:
                 try:
                     img = Image.open(new_filepath)
-                    img.save(new_filepath, optimize=True, quality=85)
+                    img.save(new_filepath, optimize=True, quality=compress_quality)
                 except Exception as e:
                     print(f"Error compressing {new_filepath}: {e}")
                     continue
@@ -124,20 +140,30 @@ def process_images(directory, crop_percent, crop_position, keep_metadata, save_f
                 continue
 
     print(f"Processed {total_files} files.")
-    print(f"Total space saved: {total_space_saved / 1024:.2f} KB")
+    print(f"Total space saved: {total_space_saved / (1024 * 1024):.2f} MB")
     input("Press Enter to restart the script...")
 
 if __name__ == "__main__":
     display_help()
     while True:
         directory = get_user_input("Enter the directory of images: ")
-        crop_percent = float(get_user_input("Enter the % to crop images by: "))
-        crop_position = get_user_input("Crop from (top, bottom, left, right): ").lower()
-        keep_metadata = get_user_input("Keep metadata? (yes/no): ") in ['y', 'yes']
-        save_format = get_user_input("Enter the format to save images as (png, jpg, jpeg, webp): ").lower()
-        compress = get_user_input("Compress images? (yes/no): ") in ['y', 'yes']
         
-        resize = get_user_input("Resize images? (yes/no): ") in ['y', 'yes']
+        crop = get_user_input("Would you like to crop images? (yes/no): ", "no") in ['y', 'yes']
+        crop_percent = 0
+        crop_position = ''
+        if crop:
+            crop_percent = float(get_user_input("Enter the % to crop images by: "))
+            crop_position = map_crop_position(get_user_input("Crop from (top, bottom, left, right): ").lower())
+
+        keep_metadata = get_user_input("Keep metadata? (yes/no): ", "no") in ['y', 'yes']
+        compress = get_user_input("Compress images? (yes/no): ", "no") in ['y', 'yes']
+        compress_quality = 85
+        if compress:
+            compress_quality = int(get_user_input("Enter the compression quality (1-100, higher is better quality): ", "85"))
+
+        resize = get_user_input("Resize images? (yes/no): ", "no") in ['y', 'yes']
+        save_format = get_user_input("Enter the format to save images in (png, jpeg, webp): ", "jpeg").lower()
+
         resize_percent = 100
         if resize:
             resize_percent = float(get_user_input("Resize images by %: "))
@@ -154,4 +180,4 @@ if __name__ == "__main__":
             if copyright:
                 add_metadata['copyright'] = copyright
 
-        process_images(directory, crop_percent, crop_position, keep_metadata, save_format, compress, resize, resize_percent, add_metadata)
+        process_images(directory, crop, crop_percent, crop_position, keep_metadata, save_format, compress, compress_quality, resize, resize_percent, add_metadata)
