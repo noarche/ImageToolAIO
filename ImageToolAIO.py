@@ -157,7 +157,7 @@ if __name__ == "__main__":
 
         keep_metadata = get_user_input("Keep metadata? (yes/no): ", "no") in ['y', 'yes']
         compress = get_user_input("Compress images? (yes/no): ", "no") in ['y', 'yes']
-        compress_quality = 85
+        compress_quality = 90
         if compress:
             compress_quality = int(get_user_input("Enter the compression quality (1-100, higher is better quality): ", "85"))
 
@@ -181,3 +181,4 @@ if __name__ == "__main__":
                 add_metadata['copyright'] = copyright
 
         process_images(directory, crop, crop_percent, crop_position, keep_metadata, save_format, compress, compress_quality, resize, resize_percent, add_metadata)
+
